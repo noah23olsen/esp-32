@@ -4,7 +4,8 @@ const WebSocket = require('ws');
 const path = require('path');
 
 const app = express();
-const port = 8080;
+// Use the port provided by Render or default to 8080
+const port = process.env.PORT || 8080;
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -19,7 +20,12 @@ app.get('/temp', (req, res) => {
 });
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({
+    server,
+    // Allow pings and automatic pongs to keep connections alive
+    clientTracking: true,
+    perMessageDeflate: true
+});
 
 // Broadcast helper
 function broadcast(data) {
@@ -31,8 +37,9 @@ function broadcast(data) {
     });
 }
 
-wss.on('connection', (ws) => {
-    console.log('New WebSocket connection');
+wss.on('connection', (ws, req) => {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    console.log(`New WebSocket connection from: ${ip}`);
 
     // Send welcome message
     ws.send(JSON.stringify({
@@ -54,13 +61,44 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        console.log('WebSocket connection closed');
+        console.log(`WebSocket connection closed from: ${ip}`);
+    });
+
+    // Handle errors
+    ws.on('error', (error) => {
+        console.error(`WebSocket error for ${ip}:`, error);
+    });
+});
+
+// Set a ping interval to keep connections alive
+const interval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) return ws.terminate();
+
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, 30000);
+
+wss.on('close', () => {
+    clearInterval(interval);
+});
+
+// Set the 'isAlive' property on new connections and handle pongs
+wss.on('connection', (ws) => {
+    ws.isAlive = true;
+    ws.on('pong', () => {
+        ws.isAlive = true;
     });
 });
 
 server.listen(port, '0.0.0.0', () => {
-    console.log(`Server running at http://localhost:${port}`);
-    console.log(`For local network access, use: http://${getLocalIp()}:${port}`);
+    console.log(`Server running on port ${port}`);
+    if (process.env.RENDER) {
+        console.log(`Deployed on Render at ${process.env.RENDER_EXTERNAL_URL}`);
+    } else {
+        console.log(`For local network access, use: http://${getLocalIp()}:${port}`);
+    }
 });
 
 // Helper function to get local IP address

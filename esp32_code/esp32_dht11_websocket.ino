@@ -6,9 +6,9 @@
 const char* ssid = "Noisebridge";
 const char* password = "noisebridge";
 
-// WebSocket server
-const char* websocket_host = "192.168.1.1";  // This will need to be updated to your Render URL
-const uint16_t websocket_port = 8080;
+// WebSocket server - Render config (secure WSS)
+const char* websocket_host = "esp-32-zvv7.onrender.com"; // No https:// prefix, no trailing slash
+const uint16_t websocket_port = 443; // 443 for secure connections
 const char* websocket_path = "/";
 
 // DHT setup
@@ -41,10 +41,24 @@ void setup() {
     Serial.print(".");
   }
   Serial.println(" connected");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
 
-  // WebSocket setup
-  webSocket.begin(websocket_host, websocket_port, websocket_path);
+  // WebSocket setup - USING SSL for Render
+  webSocket.beginSSL(websocket_host, websocket_port, websocket_path);
   webSocket.onEvent(webSocketEvent);
+  
+  // Optional: Set reconnect interval (helps with stability)
+  webSocket.setReconnectInterval(5000);
+  
+  // For debugging
+  Serial.println("Attempting to connect to WebSocket server at:");
+  Serial.print("Host: ");
+  Serial.println(websocket_host);
+  Serial.print("Port: ");
+  Serial.println(websocket_port);
+  Serial.print("Path: ");
+  Serial.println(websocket_path);
 }
 
 void loop() {
