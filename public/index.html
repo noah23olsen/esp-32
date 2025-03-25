@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 DHT11 Live Data</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    .reading {
+      font-size: 2em;
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #f0f8ff;
+    }
+
+    #status {
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 5px;
+    }
+
+    .connected {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .disconnected {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .connecting {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .log {
+      text-align: left;
+      height: 100px;
+      overflow-y: auto;
+      background-color: #f8f9fa;
+      border: 1px solid #ddd;
+      padding: 10px;
+      font-family: monospace;
+      margin-top: 20px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🌡️ Live Temperature & Humidity</h1>
+    <div class="reading" id="temp">Temperature: -- °C</div>
+    <div class="reading" id="humidity">Humidity: -- %</div>
+    <div id="status" class="connecting">Connecting to WebSocket...</div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    const logElement = document.getElementById('log');
+    const statusElement = document.getElementById('status');
+
+    function log(message) {
+      const entry = document.createElement('div');
+      entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+      logElement.appendChild(entry);
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+
+    function connectWebSocket() {
+      // Use secure WebSocket if page is served over HTTPS
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}`;
+
+      log(`Connecting to ${wsUrl}`);
+      statusElement.className = 'connecting';
+      statusElement.textContent = 'Connecting to WebSocket...';
+
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        log('WebSocket connection established');
+        statusElement.className = 'connected';
+        statusElement.textContent = 'Connected to WebSocket server';
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          log(`Received data: ${event.data}`);
+
+          if (data.temperature !== undefined && data.humidity !== undefined) {
+            document.getElementById('temp').textContent = `Temperature: ${parseFloat(data.temperature).toFixed(1)} °C`;
+            document.getElementById('humidity').textContent = `Humidity: ${parseFloat(data.humidity).toFixed(1)} %`;
+          }
+        } catch (e) {
+          log(`Error parsing data: ${e.message}`);
+        }
+      };
+
+      ws.onclose = () => {
+        log('WebSocket connection closed');
+        statusElement.className = 'disconnected';
+        statusElement.textContent = 'Disconnected - Reconnecting in 5 seconds...';
+
+        // Attempt to reconnect after 5 seconds
+        setTimeout(connectWebSocket, 5000);
+      };
+
+      ws.onerror = (error) => {
+        log(`WebSocket error: ${error}`);
+        statusElement.className = 'disconnected';
+        statusElement.textContent = 'Connection error';
+      };
+
+      return ws;
+    }
+
+    // Initial connection
+    let websocket = connectWebSocket();
+  </script>
+</body>
+
+</html>
