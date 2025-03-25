@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Access Setup - ESP32 Monitor</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #2c3e50;
+        }
+
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        code {
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .step {
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Setting Up Remote Access for ESP32 Temperature Monitor</h1>
+
+    <div class="note">
+        <strong>Note:</strong> This guide helps you set up your ESP32 to send data to a remotely hosted server instead
+        of your local machine.
+    </div>
+
+    <div class="step">
+        <h2>Step 1: Deploy the Server to Render</h2>
+        <ol>
+            <li>Sign up for a free <a href="https://render.com" target="_blank">Render account</a> if you don't have
+                one.</li>
+            <li>Create a new Web Service and connect it to your GitHub repository.</li>
+            <li>Use the following settings:
+                <ul>
+                    <li>Build Command: <code>npm install</code></li>
+                    <li>Start Command: <code>npm start</code></li>
+                </ul>
+            </li>
+            <li>Deploy the service.</li>
+            <li>Once deployed, note your Render URL (looks like <code>https://your-app-name.onrender.com</code>).</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h2>Step 2: Update Your ESP32 Code</h2>
+        <p>You'll need to modify your ESP32 code to connect to your Render service instead of your local machine:</p>
+
+        <pre>
+// OLD code (local server)
+const char* websocket_host = "192.168.1.1";
+const uint16_t websocket_port = 8080;
+const char* websocket_path = "/";
+
+// NEW code (remote server)
+const char* websocket_host = "your-app-name.onrender.com";
+const uint16_t websocket_port = 443; // Use 443 for secure WebSocket
+const char* websocket_path = "/";
+
+// Add this line right after webSocket.begin():
+webSocket.beginSSL(websocket_host, websocket_port, websocket_path);
+// Instead of: webSocket.begin(websocket_host, websocket_port, websocket_path);</pre>
+    </div>
+
+    <div class="step">
+        <h2>Step 3: Update the Server Code</h2>
+        <p>You'll also need to ensure your server code supports WSS (secure WebSockets):</p>
+
+        <pre>
+// In your server.js file, add support for HTTPS/WSS if needed
+// This is usually handled automatically by Render
+
+// If you want to test this locally with HTTPS, you would need to:
+// 1. Generate SSL certificates
+// 2. Create an HTTPS server instead of HTTP
+// 3. But for Render deployment this is handled for you</pre>
+    </div>
+
+    <div class="note">
+        <h3>Important:</h3>
+        <p>When the ESP32 connects to a remote server:</p>
+        <ul>
+            <li>Both the ESP32 and the person viewing the data will need internet access</li>
+            <li>There might be a slight delay in data transmission compared to local connections</li>
+            <li>Your ESP32 must be able to connect to WiFi with internet access</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>Step 4: Access Your Remote Dashboard</h2>
+        <p>Once everything is set up:</p>
+        <ol>
+            <li>Anyone with the URL can access your temperature and humidity data from anywhere in the world</li>
+            <li>Access your dashboard at: <code>https://your-app-name.onrender.com</code></li>
+        </ol>
+    </div>
+
+    <p><a href="/">Return to Dashboard</a></p>
+</body>
+
+</html>
